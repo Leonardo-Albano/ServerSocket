@@ -8,12 +8,8 @@ package br.edu.up.SocketServer.ClientHandler;
 
 import java.io.*;
 import java.net.Socket;
-import java.sql.Date;
-import java.text.ParsePosition;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Calendar;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -49,11 +45,9 @@ public class ClientHandler implements Runnable {
             this.ip = socket.getInetAddress().getHostAddress();
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.bufferedWriter= new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            // Add the new client handler to the array so they can receive messages from others.
             clientHandlers.add(this);
-            broadcastMessage("SERVIDOR: Novo usuário conectado!");
+            broadcastMessage("SERVIDOR: Novo usuario conectado!");
         } catch (IOException e) {
-            // Close everything more gracefully.
             closeEverything(socket, bufferedReader, bufferedWriter);
         }
     }
@@ -67,9 +61,6 @@ public class ClientHandler implements Runnable {
         
         DateTimeFormatter dtf2 = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         // System.out.println(dtf2.format(LocalDateTime.now()));
-
-
-
         return false;
     }
 
@@ -82,34 +73,39 @@ public class ClientHandler implements Runnable {
         // Continue to listen for messages while a connection with the client is still established.
         while (socket.isConnected()) {
             try {
-                // Read what the client sent and then send it to every other client.
                 messageFromClient = bufferedReader.readLine();
 
                 JSONObject jsonObject = new JSONObject(messageFromClient);
 
-
-                /*      identificador - id!=NULL ; id1 == id2 ; 
+                /*      identificador - id!=NULL ; id1 == id2 ;
                  *      mensagem      - msg!=NULL; limite de 10 msgs  ; 
                  *      data          - dt!=NULL ; dt == formatoCerto ; dt == 1minuto de margem de erro da data atual ;
-                 * 
                 */
 
+                ErrorModel errorModel = null;
                 if(jsonObject.getString("Identificador") == ""){
-                    ErrorModel errorModel = new ErrorModel("Identificador não fornecido", 403);
-                    this.bufferedWriter.write(errorModel.toString());
+                    errorModel = new ErrorModel("Identificador não fornecido", 2);
                 }else if(jsonObject.getString("Mensagem") == ""){
-                    ErrorModel errorModel = new ErrorModel("Mensagem não fornecida", 404);
-                    this.bufferedWriter.write(errorModel.toString());
+                    errorModel = new ErrorModel("Mensagem não fornecida", 4);
+                }else if(jsonObject.getString("Data") == "") {
+                    errorModel = new ErrorModel("Data não fornecida", 3);
                 }
-
-
-
+                if (errorModel != null) {
+                    this.bufferedWriter.write(errorModel.toString());
+                    this.bufferedWriter.flush();
+                }
 
                 broadcastMessage(messageFromClient);
             }
             catch (JSONException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                ErrorModel errorModel = new ErrorModel("Json mal formatado.", 1);
+                try {
+                    this.bufferedWriter.write(errorModel.toString());
+                    this.bufferedWriter.newLine();
+                    this.bufferedWriter.flush();
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
              catch (IOException e) {
                 // Close everything gracefully.

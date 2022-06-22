@@ -1,5 +1,7 @@
 package br.edu.up.SocketServer.Client;
 
+import br.edu.up.SocketServer.Model.MessageModel;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.Scanner;
@@ -31,16 +33,18 @@ public class Client {
     // Sending a message isn't blocking and can be done without spawning a thread, unlike waiting for a message.
     public void sendMessage() {
         try {
-            // Initially send the username of the client.
-            bufferedWriter.write(username);
-            bufferedWriter.newLine();
-            bufferedWriter.flush();
             // Create a scanner for user input.
             Scanner scanner = new Scanner(System.in);
             // While there is still a connection with the server, continue to scan the terminal and then send the message.
             while (socket.isConnected()) {
                 String messageToSend = scanner.nextLine();
-                bufferedWriter.write(username + ": " + messageToSend);
+
+                MessageModel message = new MessageModel();
+                message.Identificador = this.username;
+                message.Mensagem = messageToSend;
+                message.Data = "21/06/2022 21:19";
+
+                bufferedWriter.write(message.toString());
                 bufferedWriter.newLine();
                 bufferedWriter.flush();
             }
@@ -59,11 +63,9 @@ public class Client {
                 // While there is still a connection with the server, continue to listen for messages on a separate thread.
                 while (socket.isConnected()) {
                     try {
-                        // Get the messages sent from other users and print it to the console.
                         msgFromGroupChat = bufferedReader.readLine();
                         System.out.println(msgFromGroupChat);
                     } catch (IOException e) {
-                        // Close everything gracefully.
                         closeEverything(socket, bufferedReader, bufferedWriter);
                     }
                 }
